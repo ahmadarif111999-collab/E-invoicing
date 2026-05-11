@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { prisma } from './db';
 
 const COOKIE_NAME = 'fbr_session';
-const SEVEN_DAYS = 60 * 60 * 24 * 7;
+const SEVEN_DAYS_SECONDS = 60 * 60 * 24 * 7;
 
 export type SessionPayload = {
   sub: string;
@@ -12,14 +12,20 @@ export type SessionPayload = {
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
+
   if (!secret || secret.length < 24) {
-    throw new Error('JWT_SECRET is missing or too short. Generate one with: openssl rand -base64 32');
+    throw new Error(
+      'JWT_SECRET is missing or too short. Generate one with: openssl rand -base64 32'
+    );
   }
+
   return secret;
 }
 
 export function signSession(payload: SessionPayload) {
-  return jwt.sign(payload, getJwtSecret(), { expiresIn: SEVEN_DAYS });
+  return jwt.sign(payload, getJwtSecret(), {
+    expiresIn: SEVEN_DAYS_SECONDS
+  });
 }
 
 export function setSessionCookie(token: string) {
@@ -28,7 +34,7 @@ export function setSessionCookie(token: string) {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: SEVEN_DAYS
+    maxAge: SEVEN_DAYS_SECONDS
   });
 }
 
@@ -38,13 +44,20 @@ export function clearSessionCookie() {
 
 export async function getCurrentUser() {
   const token = cookies().get(COOKIE_NAME)?.value;
+
   if (!token) return null;
 
   try {
     const payload = jwt.verify(token, getJwtSecret()) as SessionPayload;
+
     return prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, globalRole: true }
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        globalRole: true
+      }
     });
   } catch {
     return null;
@@ -53,8 +66,10 @@ export async function getCurrentUser() {
 
 export async function requireUser() {
   const user = await getCurrentUser();
+
   if (!user) {
     throw Object.assign(new Error('Unauthorized'), { status: 401 });
   }
+
   return user;
 }
