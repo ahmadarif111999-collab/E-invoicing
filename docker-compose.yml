@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fbr_invoicing_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fbr_user
+      POSTGRES_PASSWORD: fbr_password
+      POSTGRES_DB: fbr_invoicing
+    ports:
+      - "5433:5432"
+    volumes:
+      - fbr_invoicing_pgdata:/var/lib/postgresql/data
+volumes:
+  fbr_invoicing_pgdata:
