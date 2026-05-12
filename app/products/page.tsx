@@ -3,17 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AppNav } from '@/components/AppNav';
+import { HsCodePicker, type HsCodePickerValue } from '@/components/HsCodePicker';
 
 type Business = {
   id: string;
   name: string;
-};
-
-type HsCode = {
-  id: string;
-  displayCode: string;
-  description: string;
-  customsDuty?: string | null;
 };
 
 type Product = {
@@ -26,16 +20,12 @@ type Product = {
   defaultHsCodeId?: string | null;
   createdAt: string;
   business?: Business;
-  defaultHsCode?: HsCode | null;
+  defaultHsCode?: HsCodePickerValue | null;
 };
 
 type ProductsResponse = {
   products: Product[];
   businesses: Business[];
-};
-
-type HsSearchResponse = {
-  results: HsCode[];
 };
 
 function compactNumber(value: string | number | null | undefined) {
@@ -55,13 +45,10 @@ export default function ProductsPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [businessFilter, setBusinessFilter] = useState('ALL');
   const [query, setQuery] = useState('');
-  const [hsQuery, setHsQuery] = useState('cotton fabric');
-  const [hsResults, setHsResults] = useState<HsCode[]>([]);
-  const [selectedHsCode, setSelectedHsCode] = useState<HsCode | null>(null);
+  const [selectedHsCode, setSelectedHsCode] = useState<HsCodePickerValue | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searchingHs, setSearchingHs] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
@@ -111,35 +98,6 @@ export default function ProductsPage() {
     }));
   }
 
-  async function searchHsCodes(event?: React.FormEvent) {
-    event?.preventDefault();
-
-    const cleaned = hsQuery.trim();
-
-    if (!cleaned) {
-      setHsResults([]);
-      return;
-    }
-
-    setSearchingHs(true);
-    setError('');
-
-    try {
-      const response = await fetch(`/api/hs-codes/search?q=${encodeURIComponent(cleaned)}`);
-      const data = (await response.json()) as HsSearchResponse;
-
-      if (!response.ok) {
-        throw new Error((data as any).error || 'Failed to search HS/PCT codes');
-      }
-
-      setHsResults(data.results || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to search HS/PCT codes');
-    } finally {
-      setSearchingHs(false);
-    }
-  }
-
   async function createProduct(event: React.FormEvent) {
     event.preventDefault();
     setError('');
@@ -185,7 +143,6 @@ export default function ProductsPage() {
         defaultTaxRate: '18'
       }));
       setSelectedHsCode(null);
-      setHsResults([]);
       setNotice('Product/service profile created successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create product/service');
@@ -198,8 +155,7 @@ export default function ProductsPage() {
     const loweredQuery = query.trim().toLowerCase();
 
     return products.filter((product) => {
-      const matchesBusiness =
-        businessFilter === 'ALL' || product.businessId === businessFilter;
+      const matchesBusiness = businessFilter === 'ALL' || product.businessId === businessFilter;
 
       const haystack = [
         product.name,
@@ -231,8 +187,9 @@ export default function ProductsPage() {
             <span className="eyebrow">Product and service master</span>
             <h1>Reusable invoice items</h1>
             <p>
-              Store products and services with default unit, tax rate, and optional HS/PCT
-              suggestion. These defaults will be used in invoice creation in the next batch.
+              Store products and services with default unit, tax rate, and a manually reviewed
+              HS/PCT code. You can now search the full HS/PCT list instead of relying only on
+              automatic suggestions.
             </p>
 
             <div className="hero-actions">
@@ -240,7 +197,7 @@ export default function ProductsPage() {
                 Create invoice
               </Link>
               <Link className="btn secondary" href="/hs-codes">
-                Search HS/PCT codes
+                Full HS/PCT lookup
               </Link>
             </div>
           </div>
@@ -285,8 +242,8 @@ export default function ProductsPage() {
             <span className="eyebrow">Add product/service</span>
             <h2>New reusable item</h2>
             <p>
-              Add default invoice values. HS/PCT and tax fields remain suggestions and must be
-              reviewed.
+              Select a default HS/PCT code from the full lookup list. The selected code remains
+              editable later on invoices.
             </p>
 
             <div style={{ display: 'grid', gap: 14, marginTop: 18 }}>
@@ -383,50 +340,14 @@ export default function ProductsPage() {
             </div>
           </form>
 
-          <div className="card card-pad span-2">
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">HS/PCT helper</span>
-                <h2>Find a default code</h2>
-              </div>
-              <span className="badge warn">Review before use</span>
-            </div>
-
-            <form className="row" onSubmit={searchHsCodes} style={{ marginBottom: 18 }}>
-              <input
-                className="input"
-                value={hsQuery}
-                onChange={(event) => setHsQuery(event.target.value)}
-                placeholder="Search product or PCT code"
-                style={{ flex: 1, minWidth: 240 }}
-              />
-              <button className="btn secondary" type="submit" disabled={searchingHs}>
-                {searchingHs ? 'Searching...' : 'Search HS/PCT'}
-              </button>
-            </form>
-
-            {hsResults.length === 0 ? (
-              <div className="empty-state">
-                <h3>No HS/PCT search results selected</h3>
-                <p>Search a product term above, then click a result to use it as default.</p>
-              </div>
-            ) : (
-              <div className="grid grid-2">
-                {hsResults.slice(0, 8).map((row) => (
-                  <button
-                    key={row.id}
-                    className="card card-pad"
-                    type="button"
-                    onClick={() => setSelectedHsCode(row)}
-                    style={{ cursor: 'pointer', textAlign: 'left' }}
-                  >
-                    <span className="badge info">{row.displayCode}</span>
-                    <h3 style={{ marginTop: 12 }}>{row.description}</h3>
-                    <p style={{ marginBottom: 0 }}>CD%: {row.customsDuty || '-'}</p>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="span-2">
+            <HsCodePicker
+              label="Default HS/PCT"
+              helper="Search the full HS/PCT database and choose a default code for this product/service."
+              value={selectedHsCode}
+              initialQuery="cotton"
+              onSelect={setSelectedHsCode}
+            />
           </div>
         </section>
 
