@@ -10,6 +10,7 @@ import {
 } from '@/lib/access';
 import { writeAuditLog } from '@/lib/audit';
 import { handleRoute, ok } from '@/lib/api-response';
+import { validateCnic, validateNtn, validateStrn } from '@/lib/tax-id';
 
 const CreateCustomerSchema = z.object({
   businessId: z.string().min(1),
@@ -86,9 +87,9 @@ export async function POST(request: Request) {
       data: {
         businessId: body.businessId,
         name: body.name.trim(),
-        ntn: cleanOptional(body.ntn),
-        strn: cleanOptional(body.strn),
-        cnic: cleanOptional(body.cnic),
+        ntn: validateNtn(body.ntn, 'Customer NTN'),
+        strn: validateStrn(body.strn, 'Customer STRN'),
+        cnic: validateCnic(body.cnic, 'Customer CNIC'),
         address: cleanOptional(body.address)
       },
       include: {
