@@ -12,6 +12,7 @@ import { handleRoute, ok } from '@/lib/api-response';
 import { roundMoney, toNumber } from '@/lib/money';
 import { suggestHsCodes } from '@/lib/hs-suggest';
 import { writeAuditLog } from '@/lib/audit';
+import { validateCnic, validateNtn, validateStrn } from '@/lib/tax-id';
 
 const InvoiceItemSchema = z.object({
   productServiceId: z.string().optional().nullable(),
@@ -156,9 +157,15 @@ export async function POST(request: Request) {
     const customer = await getCustomerForInvoice(cleanOptional(body.customerId), body.businessId);
 
     const buyerName = cleanOptional(body.buyerName) || customer?.name || '';
-    const buyerNtn = cleanOptional(body.buyerNtn) || customer?.ntn || null;
-    const buyerStrn = cleanOptional(body.buyerStrn) || customer?.strn || null;
-    const buyerCnic = cleanOptional(body.buyerCnic) || customer?.cnic || null;
+    const buyerNtn = validateNtn(cleanOptional(body.buyerNtn) || customer?.ntn || null, 'Buyer NTN');
+    const buyerStrn = validateStrn(
+      cleanOptional(body.buyerStrn) || customer?.strn || null,
+      'Buyer STRN'
+    );
+    const buyerCnic = validateCnic(
+      cleanOptional(body.buyerCnic) || customer?.cnic || null,
+      'Buyer CNIC'
+    );
     const buyerAddress = cleanOptional(body.buyerAddress) || customer?.address || null;
 
     if (!buyerName || buyerName.length < 2) {
