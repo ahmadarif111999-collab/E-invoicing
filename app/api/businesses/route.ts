@@ -11,6 +11,7 @@ import {
 } from '@/lib/access';
 import { writeAuditLog } from '@/lib/audit';
 import { handleRoute, ok } from '@/lib/api-response';
+import { validateNtn, validateStrn } from '@/lib/tax-id';
 
 const CreateBusinessSchema = z.object({
   name: z.string().min(2),
@@ -201,8 +202,8 @@ export async function POST(request: Request) {
       data: {
         firmId: PROBIZ_FIRM_ID,
         name: body.name.trim(),
-        ntn: cleanOptional(body.ntn),
-        strn: cleanOptional(body.strn),
+        ntn: validateNtn(body.ntn, 'Business NTN'),
+        strn: validateStrn(body.strn, 'Business STRN'),
         address: cleanOptional(body.address),
         invoicePrefix: normalizeInvoicePrefix(body.invoicePrefix),
         sequenceNext: 1
