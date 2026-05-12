@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppNav } from '@/components/AppNav';
+import { HsCodePicker, type HsCodePickerValue } from '@/components/HsCodePicker';
 
 type Business = {
   id: string;
@@ -23,13 +24,6 @@ type Customer = {
   address?: string | null;
 };
 
-type HsCode = {
-  id: string;
-  displayCode: string;
-  description: string;
-  customsDuty?: string | null;
-};
-
 type ProductService = {
   id: string;
   businessId: string;
@@ -38,16 +32,11 @@ type ProductService = {
   defaultUnit: string;
   defaultTaxRate: string | number;
   defaultHsCodeId?: string | null;
-  defaultHsCode?: HsCode | null;
+  defaultHsCode?: HsCodePickerValue | null;
 };
 
-type HsSuggestion = {
-  id: string;
-  code: string;
-  displayCode: string;
-  description: string;
+type HsSuggestion = HsCodePickerValue & {
   confidence?: number;
-  customsDuty?: string | null;
 };
 
 type Line = {
@@ -60,6 +49,7 @@ type Line = {
   taxRate: number;
   hsCodeId?: string | null;
   hsLabel?: string;
+  selectedHsCode?: HsCodePickerValue | null;
   suggestions?: HsSuggestion[];
   suggesting?: boolean;
 };
@@ -81,6 +71,7 @@ function newLine(): Line {
     taxRate: 18,
     hsCodeId: null,
     hsLabel: '',
+    selectedHsCode: null,
     suggestions: [],
     suggesting: false
   };
@@ -108,7 +99,7 @@ function calculateLine(line: Line) {
   };
 }
 
-function formatHsLabel(hsCode?: HsCode | null) {
+function formatHsLabel(hsCode?: HsCodePickerValue | null) {
   if (!hsCode) return '';
   return `${hsCode.displayCode} - ${hsCode.description}`;
 }
@@ -137,6 +128,8 @@ export default function NewInvoicePage() {
       unitPrice: 1000
     }
   ]);
+
+  const [activeHsLineIndex, setActiveHsLineIndex] = useState<number | null>(null);
 
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -237,6 +230,10 @@ export default function NewInvoicePage() {
       if (current.length === 1) return current;
       return current.filter((_, lineIndex) => lineIndex !== index);
     });
+
+    if (activeHsLineIndex === index) {
+      setActiveHsLineIndex(null);
+    }
   }
 
   function changeBusiness(nextBusinessId: string) {
@@ -247,6 +244,7 @@ export default function NewInvoicePage() {
     setBuyerStrn('');
     setBuyerCnic('');
     setBuyerAddress('');
+    setActiveHsLineIndex(null);
 
     setItems((current) =>
       current.map((line) => ({
@@ -254,6 +252,7 @@ export default function NewInvoicePage() {
         productServiceId: null,
         hsCodeId: null,
         hsLabel: '',
+        selectedHsCode: null,
         suggestions: []
       }))
     );
@@ -292,6 +291,7 @@ export default function NewInvoicePage() {
       taxRate: Number(product.defaultTaxRate || 18),
       hsCodeId: product.defaultHsCodeId || null,
       hsLabel: formatHsLabel(product.defaultHsCode),
+      selectedHsCode: product.defaultHsCode || null,
       suggestions: []
     });
   }
@@ -303,7 +303,8 @@ export default function NewInvoicePage() {
       updateLine(index, {
         suggestions: [],
         hsCodeId: null,
-        hsLabel: ''
+        hsLabel: '',
+        selectedHsCode: null
       });
       return;
     }
@@ -352,6 +353,16 @@ export default function NewInvoicePage() {
     updateLine(index, {
       hsCodeId: suggestion.id,
       hsLabel: `${suggestion.displayCode} - ${suggestion.description}`,
+      selectedHsCode: suggestion,
+      suggestions: []
+    });
+  }
+
+  function selectManualHsCode(index: number, hsCode: HsCodePickerValue | null) {
+    updateLine(index, {
+      hsCodeId: hsCode?.id || null,
+      hsLabel: hsCode ? `${hsCode.displayCode} - ${hsCode.description}` : '',
+      selectedHsCode: hsCode,
       suggestions: []
     });
   }
@@ -434,8 +445,8 @@ export default function NewInvoicePage() {
               <span className="eyebrow">Create invoice</span>
               <h1>Draft a client invoice</h1>
               <p>
-                Select a client business, choose a saved buyer, add product/service lines, review
-                HS/PCT suggestions, and keep every tax field editable before mock FBR submission.
+                Select a client business, choose a saved buyer, add product/service lines, and use
+                full HS/PCT search when automatic suggestions are incomplete.
               </p>
 
               <div className="hero-actions">
@@ -583,7 +594,7 @@ export default function NewInvoicePage() {
                         className="input"
                         value={buyerNtn}
                         onChange={(event) => setBuyerNtn(event.target.value)}
-                        placeholder="Optional"
+                        placeholder="7 digits, optional"
                       />
                     </label>
 
@@ -593,7 +604,7 @@ export default function NewInvoicePage() {
                         className="input"
                         value={buyerStrn}
                         onChange={(event) => setBuyerStrn(event.target.value)}
-                        placeholder="Optional"
+                        placeholder="13 digits, optional"
                       />
                     </label>
 
@@ -603,7 +614,7 @@ export default function NewInvoicePage() {
                         className="input"
                         value={buyerCnic}
                         onChange={(event) => setBuyerCnic(event.target.value)}
-                        placeholder="Optional"
+                        placeholder="13 digits, optional"
                       />
                     </label>
 
@@ -638,6 +649,7 @@ export default function NewInvoicePage() {
                 <div style={{ display: 'grid', gap: 16 }}>
                   {items.map((line, index) => {
                     const lineTotals = calculateLine(line);
+                    const hsPickerOpen = activeHsLineIndex === index;
 
                     return (
                       <div key={index} className="card card-pad" style={{ background: '#f8fafc' }}>
@@ -686,7 +698,8 @@ export default function NewInvoicePage() {
                                 updateLine(index, {
                                   description: event.target.value,
                                   hsCodeId: null,
-                                  hsLabel: ''
+                                  hsLabel: '',
+                                  selectedHsCode: null
                                 })
                               }
                               onBlur={() => suggest(index)}
@@ -791,21 +804,45 @@ export default function NewInvoicePage() {
                         <div style={{ marginTop: 16 }}>
                           <div className="between">
                             <div>
-                              <span className="label">Selected HS/PCT suggestion</span>
+                              <span className="label">Selected HS/PCT</span>
                               <p style={{ marginBottom: 0 }}>
                                 {line.hsLabel ||
-                                  'No HS/PCT code selected yet. Click suggest or leave blank for auto suggestion.'}
+                                  'No HS/PCT code selected. Use quick suggestions or open full search.'}
                               </p>
                             </div>
 
-                            <button
-                              className="btn ghost small"
-                              type="button"
-                              onClick={() => suggest(index)}
-                              disabled={line.suggesting}
-                            >
-                              {line.suggesting ? 'Suggesting...' : 'Suggest HS/PCT'}
-                            </button>
+                            <div className="row">
+                              <button
+                                className="btn ghost small"
+                                type="button"
+                                onClick={() => suggest(index)}
+                                disabled={line.suggesting}
+                              >
+                                {line.suggesting ? 'Suggesting...' : 'Quick suggest'}
+                              </button>
+
+                              <button
+                                className="btn secondary small"
+                                type="button"
+                                onClick={() =>
+                                  setActiveHsLineIndex((current) =>
+                                    current === index ? null : index
+                                  )
+                                }
+                              >
+                                {hsPickerOpen ? 'Close full search' : 'Full HS/PCT search'}
+                              </button>
+
+                              {line.hsCodeId ? (
+                                <button
+                                  className="btn ghost small"
+                                  type="button"
+                                  onClick={() => selectManualHsCode(index, null)}
+                                >
+                                  Clear HS/PCT
+                                </button>
+                              ) : null}
+                            </div>
                           </div>
 
                           {line.suggestions?.length ? (
@@ -835,6 +872,19 @@ export default function NewInvoicePage() {
                               ))}
                             </div>
                           ) : null}
+
+                          {hsPickerOpen ? (
+                            <div style={{ marginTop: 16 }}>
+                              <HsCodePicker
+                                key={`${index}-${line.description}`}
+                                label={`Line ${index + 1} HS/PCT`}
+                                helper="Search the full HS/PCT database and manually select the correct code for this invoice line."
+                                value={line.selectedHsCode || null}
+                                initialQuery={line.description || 'cotton'}
+                                onSelect={(value) => selectManualHsCode(index, value)}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -846,7 +896,7 @@ export default function NewInvoicePage() {
                 <div className="card card-pad">
                   <span className="eyebrow">Master data loaded</span>
                   <h2>{compactNumber(filteredCustomers.length)} customers</h2>
-                  <p>Saved customers for the selected business can now auto-fill buyer details.</p>
+                  <p>Saved customers for the selected business can auto-fill buyer details.</p>
                 </div>
 
                 <div className="card card-pad">
@@ -856,9 +906,9 @@ export default function NewInvoicePage() {
                 </div>
 
                 <div className="card card-pad">
-                  <span className="eyebrow">Review required</span>
-                  <h2>Editable fields</h2>
-                  <p>Every default remains editable before saving and before mock FBR submission.</p>
+                  <span className="eyebrow">HS/PCT control</span>
+                  <h2>Manual search</h2>
+                  <p>Each invoice line can now use the full HS/PCT selector, not only suggestions.</p>
                 </div>
               </section>
             </>
@@ -867,8 +917,8 @@ export default function NewInvoicePage() {
           <section className="note-panel">
             <strong>Review boundary:</strong>
             <span>
-              Saved customer and product defaults speed up invoice drafting, but HS/PCT, tax rate,
-              UOM, exemption, and FBR scenario mapping should still be reviewed. CD% should not be
+              Saved defaults and HS/PCT suggestions speed up invoice drafting, but HS/PCT, tax rate,
+              UOM, exemption, and FBR scenario mapping must still be reviewed. CD% must not be
               treated as sales tax automatically.
             </span>
           </section>
