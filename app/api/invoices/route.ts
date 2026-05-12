@@ -3,7 +3,11 @@ export const runtime = 'nodejs';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { requireUser } from '@/lib/auth';
-import { getAccessibleBusinesses, requireBusinessAccess, requireBusinessWriteAccess } from '@/lib/access';
+import {
+  getAccessibleBusinesses,
+  requireBusinessAccess,
+  requireBusinessWriteAccess
+} from '@/lib/access';
 import { handleRoute, ok } from '@/lib/api-response';
 import { roundMoney, toNumber } from '@/lib/money';
 import { suggestHsCodes } from '@/lib/hs-suggest';
@@ -30,6 +34,18 @@ const CreateInvoiceSchema = z.object({
   buyerAddress: z.string().optional().nullable(),
   items: z.array(InvoiceItemSchema).min(1)
 });
+
+type InvoiceItemCreateData = {
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+  taxAmount: number;
+  lineTotal: number;
+  hsCodeId: string | null;
+};
 
 function cleanOptional(value?: string | null) {
   const cleaned = String(value || '').trim();
@@ -149,19 +165,18 @@ export async function POST(request: Request) {
       throw requestError('Buyer name is required. Select a customer or enter buyer name manually.');
     }
 
-    const itemData = [];
+    const itemData: InvoiceItemCreateData[] = [];
     let subtotal = 0;
     let discountTotal = 0;
     let taxTotal = 0;
 
     for (const item of body.items) {
-      const product = await getProductForInvoice(cleanOptional(item.productServiceId), body.businessId);
+      const product = await getProductForInvoice(
+        cleanOptional(item.productServiceId),
+        body.businessId
+      );
 
-      const description =
-        cleanOptional(item.description) ||
-        product?.description ||
-        product?.name ||
-        '';
+      const description = cleanOptional(item.description) || product?.description || product?.name || '';
 
       if (!description || description.length < 2) {
         throw requestError('Every invoice line needs a description or selected product/service.');
@@ -228,7 +243,10 @@ export async function POST(request: Request) {
         }
       });
 
-      const invoiceNumber = `${business.invoicePrefix}-${String(business.sequenceNext).padStart(6, '0')}`;
+      const invoiceNumber = `${business.invoicePrefix}-${String(business.sequenceNext).padStart(
+        6,
+        '0'
+      )}`;
 
       return tx.invoice.create({
         data: {
