@@ -79,8 +79,9 @@ model FirmMembership {
   firmId    String
   role      FirmRole
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firm      Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firm Firm @relation(fields: [firmId], references: [id], onDelete: Cascade)
 
   @@unique([userId, firmId])
 }
@@ -94,14 +95,16 @@ model Business {
   address             String?
   invoicePrefix       String               @default("INV")
   sequenceNext        Int                  @default(1)
+  productSequenceNext Int                  @default(1)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  firm                Firm?                @relation(fields: [firmId], references: [id], onDelete: SetNull)
-  memberships         BusinessMembership[]
-  customers           Customer[]
-  products            ProductService[]
-  invoices            Invoice[]
-  auditLogs           AuditLog[]
+
+  firm        Firm?                @relation(fields: [firmId], references: [id], onDelete: SetNull)
+  memberships BusinessMembership[]
+  customers   Customer[]
+  products    ProductService[]
+  invoices    Invoice[]
+  auditLogs   AuditLog[]
 }
 
 model BusinessMembership {
@@ -110,97 +113,106 @@ model BusinessMembership {
   businessId String
   role       BusinessRole
   createdAt  DateTime     @default(now())
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([userId, businessId])
 }
 
 model Customer {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   businessId String
   name       String
   ntn        String?
   strn       String?
   cnic       String?
   address    String?
-  createdAt  DateTime  @default(now())
-  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  invoices   Invoice[]
+  createdAt  DateTime @default(now())
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
 }
 
 model HsCode {
-  id          String            @id @default(cuid())
-  code        String            @unique
+  id          String   @id @default(cuid())
+  code        String   @unique
   displayCode String
   chapter     String?
   description String
   searchText  String
   customsDuty String?
   sourcePage  Int?
-  createdAt   DateTime          @default(now())
-  products    ProductService[]
+  createdAt   DateTime @default(now())
+
+  products     ProductService[]
   invoiceItems InvoiceItem[]
 }
 
 model ProductService {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   businessId      String
+  itemCode        String?
   name            String
   description     String?
-  defaultUnit     String    @default("PCS")
-  defaultTaxRate  Decimal   @default(18) @db.Decimal(10, 2)
+  defaultUnit     String   @default("PCS")
+  defaultTaxRate  Decimal  @default(18) @db.Decimal(10, 2)
   defaultHsCodeId String?
-  createdAt       DateTime  @default(now())
-  business        Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  defaultHsCode   HsCode?   @relation(fields: [defaultHsCodeId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  defaultHsCode HsCode?  @relation(fields: [defaultHsCodeId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, itemCode])
 }
 
 model Invoice {
-  id               String               @id @default(cuid())
+  id               String        @id @default(cuid())
   businessId       String
   customerId       String?
   invoiceNumber    String
-  status           InvoiceStatus        @default(DRAFT)
-  issueDate        DateTime             @default(now())
+  status           InvoiceStatus @default(DRAFT)
+  issueDate        DateTime      @default(now())
   buyerName        String
   buyerNtn         String?
   buyerStrn        String?
   buyerCnic        String?
   buyerAddress     String?
-  subtotal         Decimal              @default(0) @db.Decimal(18, 2)
-  discountTotal    Decimal              @default(0) @db.Decimal(18, 2)
-  taxTotal         Decimal              @default(0) @db.Decimal(18, 2)
-  grandTotal       Decimal              @default(0) @db.Decimal(18, 2)
+  subtotal         Decimal       @default(0) @db.Decimal(18, 2)
+  discountTotal    Decimal       @default(0) @db.Decimal(18, 2)
+  taxTotal         Decimal       @default(0) @db.Decimal(18, 2)
+  grandTotal       Decimal       @default(0) @db.Decimal(18, 2)
   fbrInvoiceNumber String?
   fbrResponse      Json?
   createdById      String
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  business         Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer         Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  createdBy        User                 @relation("CreatedInvoices", fields: [createdById], references: [id])
-  items            InvoiceItem[]
-  submissions      FbrSubmission[]
-  auditLogs        AuditLog[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer   Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy  User            @relation("CreatedInvoices", fields: [createdById], references: [id])
+  items      InvoiceItem[]
+  submissions FbrSubmission[]
+  auditLogs  AuditLog[]
 
   @@unique([businessId, invoiceNumber])
 }
 
 model InvoiceItem {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   invoiceId   String
   hsCodeId    String?
   description String
-  quantity    Decimal  @db.Decimal(18, 2)
-  unit         String   @default("PCS")
-  unitPrice   Decimal  @db.Decimal(18, 2)
-  discount    Decimal  @default(0) @db.Decimal(18, 2)
-  taxRate     Decimal  @default(18) @db.Decimal(10, 2)
-  taxAmount   Decimal  @db.Decimal(18, 2)
-  lineTotal   Decimal  @db.Decimal(18, 2)
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  hsCode      HsCode?  @relation(fields: [hsCodeId], references: [id], onDelete: SetNull)
+  quantity    Decimal @db.Decimal(18, 2)
+  unit        String  @default("PCS")
+  unitPrice   Decimal @db.Decimal(18, 2)
+  discount    Decimal @default(0) @db.Decimal(18, 2)
+  taxRate     Decimal @default(18) @db.Decimal(10, 2)
+  taxAmount   Decimal @db.Decimal(18, 2)
+  lineTotal   Decimal @db.Decimal(18, 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  hsCode  HsCode? @relation(fields: [hsCodeId], references: [id], onDelete: SetNull)
 }
 
 model FbrSubmission {
@@ -213,7 +225,8 @@ model FbrSubmission {
   errorPayload    Json?
   referenceNumber String?
   createdAt       DateTime            @default(now())
-  invoice         Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
@@ -228,7 +241,8 @@ model AuditLog {
   newValue   Json?
   ipAddress  String?
   createdAt  DateTime @default(now())
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  business   Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
-  invoice    Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 }
