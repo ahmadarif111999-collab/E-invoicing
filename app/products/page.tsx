@@ -13,6 +13,7 @@ type Business = {
 type Product = {
   id: string;
   businessId: string;
+  itemCode?: string | null;
   name: string;
   description?: string | null;
   defaultUnit: string;
@@ -143,7 +144,7 @@ export default function ProductsPage() {
         defaultTaxRate: '18'
       }));
       setSelectedHsCode(null);
-      setNotice('Product/service profile created successfully.');
+      setNotice(`Product/service created with item code ${data.product.itemCode || 'generated'}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create product/service');
     } finally {
@@ -158,6 +159,7 @@ export default function ProductsPage() {
       const matchesBusiness = businessFilter === 'ALL' || product.businessId === businessFilter;
 
       const haystack = [
+        product.itemCode || '',
         product.name,
         product.description || '',
         product.defaultUnit,
@@ -176,6 +178,7 @@ export default function ProductsPage() {
   }, [businessFilter, products, query]);
 
   const hsLinkedCount = filteredProducts.filter((product) => product.defaultHsCode).length;
+  const codedCount = filteredProducts.filter((product) => product.itemCode).length;
 
   return (
     <>
@@ -187,9 +190,8 @@ export default function ProductsPage() {
             <span className="eyebrow">Product and service master</span>
             <h1>Reusable invoice items</h1>
             <p>
-              Store products and services with default unit, tax rate, and a manually reviewed
-              HS/PCT code. You can now search the full HS/PCT list instead of relying only on
-              automatic suggestions.
+              Store products and services with generated item codes, default unit, tax rate, and a
+              manually reviewed HS/PCT code. Item codes help prevent accidental duplicate item setup.
             </p>
 
             <div className="hero-actions">
@@ -207,6 +209,10 @@ export default function ProductsPage() {
             <h2>{compactNumber(filteredProducts.length)} items</h2>
             <div className="workspace-list">
               <div>
+                <span>Item codes</span>
+                <strong>{compactNumber(codedCount)}</strong>
+              </div>
+              <div>
                 <span>HS/PCT linked</span>
                 <strong>{compactNumber(hsLinkedCount)}</strong>
               </div>
@@ -214,12 +220,8 @@ export default function ProductsPage() {
                 <span>Businesses</span>
                 <strong>{compactNumber(businesses.length)}</strong>
               </div>
-              <div>
-                <span>Default tax review</span>
-                <strong>Required</strong>
-              </div>
             </div>
-            <span className="mode-pill">Suggestion only</span>
+            <span className="mode-pill">Duplicate control</span>
           </div>
         </section>
 
@@ -242,8 +244,8 @@ export default function ProductsPage() {
             <span className="eyebrow">Add product/service</span>
             <h2>New reusable item</h2>
             <p>
-              Select a default HS/PCT code from the full lookup list. The selected code remains
-              editable later on invoices.
+              The system will automatically generate a unique item code for the selected business.
+              Duplicate product names inside the same business are blocked.
             </p>
 
             <div style={{ display: 'grid', gap: 14, marginTop: 18 }}>
@@ -264,6 +266,14 @@ export default function ProductsPage() {
                   ))}
                 </select>
               </label>
+
+              <div className="card card-pad" style={{ background: '#f8fafc' }}>
+                <span className="label">Generated item code</span>
+                <p style={{ marginBottom: 0 }}>
+                  The code will be created after saving, for example{' '}
+                  <strong>ABC-ITEM-000001</strong>.
+                </p>
+              </div>
 
               <label>
                 <span className="label">Product/service name</span>
@@ -367,7 +377,7 @@ export default function ProductsPage() {
                 className="input"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by name, unit, HS/PCT, business"
+                placeholder="Search by item code, name, unit, HS/PCT, business"
               />
             </label>
 
@@ -405,6 +415,7 @@ export default function ProductsPage() {
               <table>
                 <thead>
                   <tr>
+                    <th>Item code</th>
                     <th>Product/service</th>
                     <th>Business</th>
                     <th>Defaults</th>
@@ -415,6 +426,9 @@ export default function ProductsPage() {
                 <tbody>
                   {filteredProducts.map((product) => (
                     <tr key={product.id}>
+                      <td>
+                        <span className="badge neutral">{product.itemCode || 'Missing'}</span>
+                      </td>
                       <td>
                         <strong>{product.name}</strong>
                         <p style={{ margin: '4px 0 0', fontSize: 12 }}>
@@ -452,8 +466,8 @@ export default function ProductsPage() {
         <section className="note-panel">
           <strong>Important:</strong>
           <span>
-            Default HS/PCT code and tax rate are convenience values only. They must remain editable
-            and reviewed on each invoice before any real FBR workflow is enabled.
+            Item codes prevent duplicate setup inside the product master. HS/PCT code and tax rate
+            are convenience defaults only and must remain editable on each invoice.
           </span>
         </section>
       </main>
