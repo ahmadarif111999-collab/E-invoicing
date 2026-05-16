@@ -8,7 +8,6 @@ const prisma = new PrismaClient();
 
 const PROBIZ_FIRM_ID = 'seed_firm_probiz';
 const PROBIZ_FIRM_NAME = 'ProBiz';
-
 const PARTNER_PASSWORD = 'Probiz01';
 
 type HsSeedRow = {
@@ -177,21 +176,23 @@ async function seedDemoBusiness(firmId: string) {
     update: {
       firmId,
       name: 'ABC Textiles Pvt Ltd',
-      ntn: '1234567-8',
+      ntn: '1234567',
       strn: '3277876123456',
       address: 'Karachi, Pakistan',
       invoicePrefix: 'ABC',
-      sequenceNext: 3
+      sequenceNext: 3,
+      productSequenceNext: 2
     },
     create: {
       id: 'seed_business_abc_textiles',
       firmId,
       name: 'ABC Textiles Pvt Ltd',
-      ntn: '1234567-8',
+      ntn: '1234567',
       strn: '3277876123456',
       address: 'Karachi, Pakistan',
       invoicePrefix: 'ABC',
-      sequenceNext: 3
+      sequenceNext: 3,
+      productSequenceNext: 2
     }
   });
 
@@ -202,16 +203,18 @@ async function seedDemoBusiness(firmId: string) {
     update: {
       businessId: business.id,
       name: 'Retail House Lahore',
-      ntn: '7654321-0',
+      ntn: '7654321',
       strn: '3277876543210',
+      cnic: null,
       address: 'Lahore, Pakistan'
     },
     create: {
       id: 'seed_customer_retail_house',
       businessId: business.id,
       name: 'Retail House Lahore',
-      ntn: '7654321-0',
+      ntn: '7654321',
       strn: '3277876543210',
+      cnic: null,
       address: 'Lahore, Pakistan'
     }
   });
@@ -230,6 +233,7 @@ async function seedDemoBusiness(firmId: string) {
     },
     update: {
       businessId: business.id,
+      itemCode: 'ABC-ITEM-000001',
       name: 'Cotton fabric',
       description: 'Cotton textile fabric sold by meter',
       defaultUnit: 'MTR',
@@ -239,6 +243,7 @@ async function seedDemoBusiness(firmId: string) {
     create: {
       id: 'seed_product_cotton_fabric',
       businessId: business.id,
+      itemCode: 'ABC-ITEM-000001',
       name: 'Cotton fabric',
       description: 'Cotton textile fabric sold by meter',
       defaultUnit: 'MTR',
@@ -273,8 +278,9 @@ async function seedDemoInvoices(params: {
       invoiceNumber: 'ABC-000001',
       status: InvoiceStatus.ACCEPTED_BY_FBR,
       buyerName: 'Retail House Lahore',
-      buyerNtn: '7654321-0',
+      buyerNtn: '7654321',
       buyerStrn: '3277876543210',
+      buyerCnic: null,
       buyerAddress: 'Lahore, Pakistan',
       subtotal: 50000,
       discountTotal: 0,
@@ -296,8 +302,9 @@ async function seedDemoInvoices(params: {
       status: InvoiceStatus.ACCEPTED_BY_FBR,
       issueDate: new Date('2026-05-01T00:00:00.000Z'),
       buyerName: 'Retail House Lahore',
-      buyerNtn: '7654321-0',
+      buyerNtn: '7654321',
       buyerStrn: '3277876543210',
+      buyerCnic: null,
       buyerAddress: 'Lahore, Pakistan',
       subtotal: 50000,
       discountTotal: 0,
@@ -339,8 +346,9 @@ async function seedDemoInvoices(params: {
       invoiceNumber: 'ABC-000002',
       status: InvoiceStatus.DRAFT,
       buyerName: 'Retail House Lahore',
-      buyerNtn: '7654321-0',
+      buyerNtn: '7654321',
       buyerStrn: '3277876543210',
+      buyerCnic: null,
       buyerAddress: 'Lahore, Pakistan',
       subtotal: 15000,
       discountTotal: 0,
@@ -357,8 +365,9 @@ async function seedDemoInvoices(params: {
       status: InvoiceStatus.DRAFT,
       issueDate: new Date('2026-05-05T00:00:00.000Z'),
       buyerName: 'Retail House Lahore',
-      buyerNtn: '7654321-0',
+      buyerNtn: '7654321',
       buyerStrn: '3277876543210',
+      buyerCnic: null,
       buyerAddress: 'Lahore, Pakistan',
       subtotal: 15000,
       discountTotal: 0,
@@ -432,6 +441,7 @@ async function main() {
     console.log(`${partner.email} / ${PARTNER_PASSWORD} / ${partner.firmRole}`);
   }
   console.log('');
+  console.log('Seeded product item code: ABC-ITEM-000001');
   console.log('Legacy owner@probiz.ai login has been disabled by seed.');
 }
 
